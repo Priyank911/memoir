@@ -97,18 +97,8 @@ features:
 }
 </style>
 
-<div class="home-quickstart">
-  <div class="terminal-header">
-    <span>SYSTEM_BOOT: MEMOIR_INITIALIZER</span>
-    <div class="terminal-dots">
-      <div class="terminal-dot"></div>
-      <div class="terminal-dot"></div>
-      <div class="terminal-dot"></div>
-    </div>
-  </div>
-  <div class="terminal-body">
-    <h3 class="terminal-title">🎮 Core NPC Memory Loop</h3>
-    <p>Inject long-term context directly into your dialogue generator script in three clean calls. Memoir wraps Supermemory Local to manage long-term NPC context safely:</p>
+::: tip 🎮 Core NPC Memory Loop
+Inject long-term context directly into your dialogue generator script in three clean calls. Memoir wraps Supermemory Local to manage long-term NPC context safely:
 
 ```typescript
 import { Memoir } from "memoir-npc";
@@ -127,6 +117,4 @@ const pastContext = await mage.recallContext("player-1");
 const npcReply = await generateNPCDialogue(playerInput, pastContext);
 await mage.saveInteraction("player-1", playerInput, npcReply);
 ```
-
-  </div>
-</div>
+:::
