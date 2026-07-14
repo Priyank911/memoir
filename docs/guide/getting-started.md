@@ -18,7 +18,7 @@ Before using Memoir, you must have:
 Install Memoir via npm:
 
 ```bash
-npm install memoir
+npm install memoir-npc
 ```
 
 ## Quickstart
@@ -26,7 +26,7 @@ npm install memoir
 Here is how you configure Memoir and give an NPC the ability to save and recall conversations:
 
 ```typescript
-import { Memoir } from 'memoir';
+import { Memoir } from 'memoir-npc';
 
 // 1. Initialize Memoir pointing to your local Supermemory instance
 const memoir = new Memoir({

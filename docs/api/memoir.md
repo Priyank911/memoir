@@ -3,7 +3,7 @@
 The main entry point of the Memoir SDK.
 
 ```typescript
-import { Memoir } from 'memoir';
+import { Memoir } from 'memoir-npc';
 ```
 
 ## Constructor

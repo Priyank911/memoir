@@ -7,7 +7,7 @@
  *
  * @example
  * ```typescript
- * import { Memoir } from "memoir";
+ * import { Memoir } from "memoir-npc";
  *
  * const memoir = new Memoir({
  *   supermemoryApiKey: "sm_xxx",

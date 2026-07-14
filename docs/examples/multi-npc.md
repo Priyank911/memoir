@@ -7,7 +7,7 @@ In complex games, you will have multiple NPCs. Memoir ensures that each NPC's me
 Memories for `'wizard'` are saved under `npc:wizard`, while memories for `'blacksmith'` are saved under `npc:blacksmith`. Even when the same player interacts with both, their memories will never mix.
 
 ```typescript
-import { Memoir } from 'memoir';
+import { Memoir } from 'memoir-npc';
 
 const memoir = new Memoir({
   supermemoryApiKey: 'key'

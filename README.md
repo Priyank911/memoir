@@ -15,7 +15,7 @@
 ## Install
 
 ```bash
-npm install memoir
+npm install memoir-npc
 ```
 
 ## Prerequisites
@@ -31,7 +31,7 @@ It runs at `http://localhost:6767` by default. See [Supermemory's docs](https://
 ## Quickstart
 
 ```typescript
-import { Memoir } from "memoir";
+import { Memoir } from "memoir-npc";
 
 // 1. Create a Memoir instance
 const memoir = new Memoir({
@@ -186,7 +186,7 @@ import {
   MemoirAuthError,
   MemoirTimeoutError,
   MemoirAPIError,
-} from "memoir";
+} from "memoir-npc";
 
 try {
   await npc.saveInteraction("player-1", input, reply);

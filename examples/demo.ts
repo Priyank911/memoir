@@ -15,7 +15,7 @@
  */
 
 import * as readline from "node:readline";
-import { Memoir, MemoirConnectionError } from "memoir";
+import { Memoir, MemoirConnectionError } from "../src/index";
 import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
 

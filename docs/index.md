@@ -111,7 +111,7 @@ features:
     <p>Inject long-term context directly into your dialogue generator script in three clean calls. Memoir wraps Supermemory Local to manage long-term NPC context safely:</p>
 
 ```typescript
-import { Memoir } from "memoir";
+import { Memoir } from "memoir-npc";
 
 // 1. Initialize the memory cartridge pointing to Supermemory Local
 const memoir = new Memoir({

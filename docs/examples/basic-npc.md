@@ -6,13 +6,13 @@ This example demonstrates how to integrate Memoir with the official **Gemini SDK
 
 Ensure you have installed Memoir and the Gemini SDK:
 ```bash
-npm install memoir @google/genai dotenv tsx
+npm install memoir-npc @google/genai dotenv tsx
 ```
 
 Create a file named `aldric.ts`:
 
 ```typescript
-import { Memoir } from 'memoir';
+import { Memoir } from 'memoir-npc';
 import { GoogleGenAI } from '@google/genai';
 import * as readline from 'node:readline';
 import 'dotenv/config';

@@ -8,7 +8,7 @@ import {
   MemoirAuthError,
   MemoirTimeoutError,
   MemoirAPIError
-} from 'memoir';
+} from 'memoir-npc';
 ```
 
 ## `MemoirConnectionError`
