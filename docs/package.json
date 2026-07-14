@@ -1,0 +1,15 @@
+{
+  "name": "memoir-docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "VitePress documentation for Memoir NPC Memory SDK",
+  "scripts": {
+    "docs:dev": "vitepress dev",
+    "docs:build": "vitepress build",
+    "docs:preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.2.0"
+  }
+}

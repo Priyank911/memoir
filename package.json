@@ -1,0 +1,63 @@
+{
+  "name": "memoir",
+  "version": "0.1.0",
+  "description": "Give AI game NPCs persistent, long-term memory across sessions. A thin, typed bridge over Supermemory Local.",
+  "license": "MIT",
+  "author": "",
+  "keywords": [
+    "ai",
+    "npc",
+    "memory",
+    "game",
+    "supermemory",
+    "persistent-memory",
+    "conversational-ai",
+    "long-term-memory"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "scripts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "cross-env RUN_INTEGRATION=1 vitest run test/integration.test.ts",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm test",
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "dependencies": {
+    "supermemory": "4.24.12"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsup": "^8.0.0",
+    "vitest": "^2.0.0",
+    "cross-env": "^7.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "memoir-examples",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive demo scripts for testing Memoir end-to-end",
+  "type": "module",
+  "scripts": {
+    "demo": "npx tsx demo.ts",
+    "demo:multi": "npx tsx multi-npc-demo.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "memoir": "file:..",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0"
+  }
+}

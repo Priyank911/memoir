@@ -1,0 +1,378 @@
+/* 📖 Memoir SDK Custom Style Sheet — Stark Black & White Gamified Theme */
+
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+/* ─── Global Custom Properties ────────────────────────────────────── */
+
+:root {
+  /* Fonts */
+  --vp-font-family-base: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono', monospace;
+
+  /* Color Palette - Light Mode (Stark White) */
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-alt: #fafafa;
+  --vp-c-bg-elv: #f5f5f5;
+  --vp-c-bg-soft: #f5f5f5;
+  --vp-c-border: #000000;
+  --vp-c-divider: #e5e5e5;
+  
+  --vp-c-text-1: #000000;
+  --vp-c-text-2: #222222;
+  --vp-c-text-3: #555555;
+  
+  --vp-c-brand-1: #000000;
+  --vp-c-brand-2: #222222;
+  --vp-c-brand-3: #444444;
+  --vp-c-brand-soft: rgba(0, 0, 0, 0.05);
+
+  /* Buttons */
+  --vp-button-brand-bg: #000000;
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-hover-bg: #222222;
+  --vp-button-brand-hover-text: #ffffff;
+  --vp-button-brand-active-bg: #444444;
+  
+  --vp-button-alt-bg: transparent;
+  --vp-button-alt-text: #000000;
+  --vp-button-alt-border: #000000;
+  --vp-button-alt-hover-bg: #000000;
+  --vp-button-alt-hover-text: #ffffff;
+
+  /* Hero & Accents */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(135deg, #000000 0%, #444444 100%);
+  --vp-home-hero-image-background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 0);
+  --vp-home-hero-image-filter: none;
+
+  /* Dot Grid Pattern for Game Aesthetics */
+  --dot-color: rgba(0, 0, 0, 0.04);
+}
+
+.dark {
+  /* Color Palette - Dark Mode (Stark Black) */
+  --vp-c-bg: #000000;
+  --vp-c-bg-alt: #050505;
+  --vp-c-bg-elv: #0c0c0c;
+  --vp-c-bg-soft: #0c0c0c;
+  --vp-c-border: #ffffff;
+  --vp-c-divider: #222222;
+  
+  --vp-c-text-1: #ffffff;
+  --vp-c-text-2: #dddddd;
+  --vp-c-text-3: #aaaaaa;
+  
+  --vp-c-brand-1: #ffffff;
+  --vp-c-brand-2: #e5e5e5;
+  --vp-c-brand-3: #cccccc;
+  --vp-c-brand-soft: rgba(255, 255, 255, 0.08);
+
+  /* Buttons */
+  --vp-button-brand-bg: #ffffff;
+  --vp-button-brand-text: #000000;
+  --vp-button-brand-hover-bg: #e5e5e5;
+  --vp-button-brand-hover-text: #000000;
+  --vp-button-brand-active-bg: #cccccc;
+  
+  --vp-button-alt-bg: transparent;
+  --vp-button-alt-text: #ffffff;
+  --vp-button-alt-border: #ffffff;
+  --vp-button-alt-hover-bg: #ffffff;
+  --vp-button-alt-hover-text: #000000;
+
+  /* Hero & Accents */
+  --vp-home-hero-name-background: linear-gradient(135deg, #ffffff 0%, #888888 100%);
+  --vp-home-hero-image-background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 0);
+
+  --dot-color: rgba(255, 255, 255, 0.04);
+}
+
+h1, h2, h3, h4, h5, h6, 
+.title, 
+.VPNavBarTitle, 
+.name, 
+.VPFeature .title, 
+.VPButton,
+.nav-bar-title,
+.VPBadge {
+  font-family: 'Pixelify Sans', sans-serif !important;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+body, p, ul, ol, li, td, th, .VPFeature .details, .tagline {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 0.01em;
+}
+
+code, pre, kbd, samp, .vp-code, .vp-doc pre {
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+pre span, code span, .vp-code span {
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Stylized retro container for the ASCII architecture diagram */
+.architecture-diagram {
+  margin: 24px 0;
+  border: 2px solid var(--vp-c-text-1);
+  padding: 16px;
+  background-color: rgba(var(--vp-c-bg-elv), 0.3);
+  overflow-x: auto;
+  box-shadow: 4px 4px 0px 0px var(--vp-c-divider);
+}
+.architecture-diagram pre {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  line-height: 1.25 !important;
+  font-size: 13px !important;
+  white-space: pre !important;
+  word-break: normal !important;
+  color: var(--vp-c-text-1) !important;
+}
+.architecture-diagram pre span {
+  font-family: 'JetBrains Mono', monospace !important;
+  color: var(--vp-c-text-1) !important;
+}
+
+/* ─── Game Blueprint Dot Background ───────────────────────────────── */
+
+body {
+  background-image: radial-gradient(var(--dot-color) 1.5px, transparent 1.5px) !important;
+  background-size: 24px 24px !important;
+}
+
+/* ─── Glassmorphism & Translucency ────────────────────────────────── */
+
+.VPNavBar {
+  background-color: rgba(var(--vp-c-bg), 0.6) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 2px solid var(--vp-c-divider) !important;
+}
+
+.VPSidebar {
+  background-color: rgba(var(--vp-c-bg), 0.5) !important;
+  backdrop-filter: blur(12px);
+  border-right: 2px solid var(--vp-c-divider) !important;
+}
+
+/* ─── Gamified UI & Controls ─────────────────────────────────────── */
+
+/* Actions Buttons - Retro Pixel Style */
+.VPButton {
+  border-radius: 0px !important; /* Stark sharp corners */
+  border: 2px solid currentColor !important;
+  text-transform: uppercase;
+  transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+}
+
+.VPButton.brand {
+  background-color: var(--vp-button-brand-bg) !important;
+  color: var(--vp-button-brand-text) !important;
+  box-shadow: 4px 4px 0px 0px var(--vp-c-text-1);
+}
+.VPButton.brand:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px var(--vp-c-text-1);
+}
+.VPButton.brand:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px 0px var(--vp-c-text-1);
+}
+
+.VPButton.alt {
+  background-color: var(--vp-button-alt-bg) !important;
+  color: var(--vp-button-alt-text) !important;
+  box-shadow: 4px 4px 0px 0px var(--vp-c-text-1);
+}
+.VPButton.alt:hover {
+  background-color: var(--vp-button-alt-hover-bg) !important;
+  color: var(--vp-button-alt-hover-text) !important;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px var(--vp-c-text-1);
+}
+.VPButton.alt:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px 0px var(--vp-c-text-1);
+}
+
+/* Feature Cards - Retro Pixel Style */
+.VPFeature {
+  border-radius: 0px !important;
+  border: 2px solid var(--vp-c-divider) !important;
+  background-color: rgba(var(--vp-c-bg), 0.4) !important;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  box-shadow: 4px 4px 0px 0px var(--vp-c-divider);
+}
+
+.VPFeature:hover {
+  border-color: var(--vp-c-text-1) !important;
+  box-shadow: 6px 6px 0px 0px var(--vp-c-text-1);
+  transform: translate(-2px, -2px);
+}
+
+/* Badge overrides */
+.VPBadge {
+  border-radius: 0px !important;
+  border: 1px solid var(--vp-c-text-1) !important;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.VPBadge.info {
+  background-color: var(--vp-c-bg) !important;
+  color: var(--vp-c-text-1) !important;
+}
+.VPBadge.tip {
+  background-color: var(--vp-c-text-1) !important;
+  color: var(--vp-c-bg) !important;
+}
+
+/* Blockquotes & Callouts */
+.custom-block {
+  border-radius: 0px !important;
+  border: 2px solid var(--vp-c-text-1) !important;
+  background-color: rgba(var(--vp-c-bg-alt), 0.5) !important;
+  backdrop-filter: blur(4px);
+  color: var(--vp-c-text-1) !important;
+  box-shadow: 4px 4px 0px 0px var(--vp-c-text-1);
+}
+.custom-block.tip {
+  border-color: var(--vp-c-text-1) !important;
+}
+.custom-block.warning {
+  border-color: var(--vp-c-text-1) !important;
+  border-style: dashed !important;
+}
+.custom-block .custom-block-title {
+  font-family: 'Pixelify Sans', sans-serif !important;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+/* Tables - Pixel/Retro Style */
+.vp-doc table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.vp-doc th {
+  background-color: var(--vp-c-text-1) !important;
+  color: var(--vp-c-bg) !important;
+  font-family: 'Pixelify Sans', sans-serif !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  border: 2px solid var(--vp-c-text-1) !important;
+  padding: 10px !important;
+}
+.vp-doc td {
+  border: 2px solid var(--vp-c-text-1) !important;
+  padding: 10px !important;
+  background-color: rgba(var(--vp-c-bg-elv), 0.3) !important;
+}
+.vp-doc tr:nth-child(even) td {
+  background-color: rgba(var(--vp-c-bg-elv), 0.6) !important;
+}
+
+/* Code block container tweaks */
+.vp-doc div[class*="language-"] {
+  border-radius: 0px !important;
+  border: 2px solid var(--vp-c-divider) !important;
+  box-shadow: 4px 4px 0px 0px var(--vp-c-divider);
+}
+
+.vp-doc div[class*="language-"]:hover {
+  border-color: var(--vp-c-text-1) !important;
+  box-shadow: 4px 4px 0px 0px var(--vp-c-text-1);
+}
+
+/* Inline code formatting */
+.vp-doc :not(pre) > code {
+  border-radius: 0px !important;
+  border: 1px solid var(--vp-c-divider) !important;
+  background-color: var(--vp-c-bg-elv) !important;
+  padding: 2px 6px !important;
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--vp-c-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--vp-c-text-1);
+  border: 2px solid var(--vp-c-bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vp-c-text-2);
+}
+
+/* ─── Mobile Responsiveness Overrides ────────────────────────────── */
+@media (max-width: 768px) {
+  /* Scale down massive hero text on mobile */
+  .VPPage .name {
+    font-size: 3rem !important;
+    line-height: 1.1 !important;
+  }
+  .VPPage .tagline {
+    font-size: 1.1rem !important;
+    margin-top: 16px !important;
+  }
+  
+  /* Stack buttons on small screens */
+  .VPPage .actions {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+  }
+  .VPPage .VPButton {
+    width: 100% !important;
+    display: inline-flex !important;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Compact the quickstart terminal box on mobile */
+  .home-quickstart {
+    margin: 32px auto !important;
+    padding: 0 12px !important;
+  }
+  .terminal-header {
+    font-size: 10px !important;
+    padding: 6px 12px !important;
+  }
+  .terminal-body {
+    padding: 14px !important;
+  }
+  .terminal-title {
+    font-size: 15px !important;
+  }
+  
+  /* Fix code blocks overflowing on narrow viewports */
+  .vp-doc pre, .vp-doc div[class*="language-"] {
+    font-size: 12px !important;
+    padding: 12px !important;
+    margin: 8px 0 !important;
+  }
+
+  /* Optimize text padding in doc pages */
+  .vp-doc {
+    padding: 8px 12px !important;
+  }
+  .vp-doc h1 {
+    font-size: 26px !important;
+  }
+  .vp-doc h2 {
+    font-size: 21px !important;
+  }
+  .vp-doc h3 {
+    font-size: 18px !important;
+  }
+}
+
