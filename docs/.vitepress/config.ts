@@ -46,7 +46,7 @@ export default defineConfig({
       }
     ],
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/supermemoryai/supermemory' }
+      { icon: 'github', link: 'https://github.com/Priyank911/memoir' }
     ],
     footer: {
       message: 'Released under the MIT License.',

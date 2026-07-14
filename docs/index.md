@@ -14,7 +14,7 @@ hero:
       link: /api/memoir
     - theme: alt
       text: GITHUB
-      link: https://github.com/supermemoryai/supermemory
+      link: https://github.com/Priyank911/memoir
 
 features:
   - icon: |
