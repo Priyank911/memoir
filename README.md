@@ -1,22 +1,37 @@
-```
-▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄ ▄▄▄▄▄ ▄▄▄▄▄▄▄
-█ ▄ ▄ █ █ ▄▄▄▄█ █ ▄ ▄ █ █ ▄▄▄ █   █   █ ▄▄▄ █
-█ █ █ █ █ ▄▄▄█▄ █ █ █ █ █ █▄█ █   █   █ ▄ ▄▄█
-█▄█▀█▄█ █▄▄▄▄▄█ █▄█▀█▄█ █▄▄▄▄▄█ █▄▄▄█ █▄█▄▄▄█
+```text
+ ▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄ ▄▄▄▄▄ ▄▄▄▄▄▄▄
+ █ ▄ ▄ █ █ ▄▄▄▄█ █ ▄ ▄ █ █ ▄▄▄ █   █   █ ▄▄▄ █
+ █ █ █ █ █ ▄▄▄█▄ █ █ █ █ █ █▄█ █   █   █ ▄ ▄▄█
+ █▄█▀█▄█ █▄▄▄▄▄█ █▄█▀█▄█ █▄▄▄▄▄█ █▄▄▄█ █▄█▄▄▄█
 ```
 
 # Memoir
 
-[![MIT License](./LICENSE)](./LICENSE)
-[![npm version](https://img.shields.io/npm/v/memoir.svg)](https://www.npmjs.com/package/memoir)
+[![npm version](https://img.shields.io/npm/v/memoir-npc?color=black&style=flat-square)](https://www.npmjs.com/package/memoir-npc)
+[![MIT License](https://img.shields.io/badge/license-MIT-black.svg?style=flat-square)](./LICENSE)
+[![Engine](https://img.shields.io/badge/engine-Supermemory-black.svg?style=flat-square)](https://docs.supermemory.ai)
 
 **Memoir** is a high-speed, developer-centric SDK built directly on top of the **Supermemory** AI memory engine. It gives AI game NPCs persistent, long-term memory across sessions by wrapping [Supermemory Local](https://docs.supermemory.ai) (a self-hosted memory engine) so you never touch raw memory database APIs directly. Install it, wire in three functions, and every NPC in your game remembers every player interaction — forever — with no database schema written by hand.
+
+---
+
+## Features Overview
+
+*   **🧠 Persistent RAG Memory**: Saves NPC–Player interactions forever. NPCs remember quest details, player items, and choices across game sessions.
+*   **⚡ Zero Database Setup**: No database schemas to write. Pass dialogue logs and let the extraction engine resolve facts and relationships automatically.
+*   **👾 Gamer-Optimized**: High-speed, thin middleware designed to ensure AI processing doesn't freeze the main game thread.
+*   **🛡️ Strong Exception Safety**: Explicit exception classes for network drops, timeouts, and auth errors. Keep the AI dialogue loop running smoothly.
+*   **🔄 Resilient Auto-Retries**: Automated 1-time retry (300ms delay) for connection drops and timeouts. Keeps games fluid.
+
+---
 
 ## Install
 
 ```bash
 npm install memoir-npc
 ```
+
+---
 
 ## Prerequisites
 
@@ -28,12 +43,14 @@ npx supermemory local
 
 It runs at `http://localhost:6767` by default. See [Supermemory's docs](https://docs.supermemory.ai) for full setup instructions.
 
+---
+
 ## Quickstart
 
 ```typescript
 import { Memoir } from "memoir-npc";
 
-// 1. Create a Memoir instance
+// 1. Create a Memoir instance pointing to Supermemory Local
 const memoir = new Memoir({
   supermemoryApiKey: process.env.SUPERMEMORY_API_KEY!,
   supermemoryBaseUrl: "http://localhost:6767", // default
@@ -57,6 +74,72 @@ await mage.saveInteraction("player-1", playerInput, npcReply);
 ```
 
 That's it. The NPC now remembers this conversation next time, even across completely separate sessions.
+
+---
+
+## Technical Architecture
+
+Here is the data loop orchestration between your game code, Memoir SDK, and the Supermemory database engine during runtime:
+
+```text
++-----------------------------------------------------------------+
+|                        YOUR GAME ENGINE                         |
+|      (Dialogue Loops, Quest Handlers, NPC AI controllers)       |
++---------------+---------------------------------+---------------+
+                |                                 ^
+                | 1. saveInteraction()            | 2. recallContext()
+                |    (Player Input & NPC Reply)   |    (Formulated Prompt)
+                v                                 |
++-------------------------------------------------+---------------+
+|                         MEMOIR SDK                              |
+|                                                                 |
+|  +--------------------+                    +----------------+   |
+|  |  NpcHandle Scoper  |                    | Timeout/Abort  |   |
+|  |  (Tag: npc:${id})  |                    |   Controller   |   |
+|  +--------+-----------+                    +-------+--------+   |
+|           |                                        |            |
+|           v                                        v            |
+|  +--------------------+                    +----------------+   |
+|  |  Memory Formatter  |                    | Auto-Retry-Once|   |
+|  |  (Metadata Inject) |                    | (300ms delay)  |   |
+|  +--------+-----------+                    +-------+--------+   |
++-----------|----------------------------------------|------------+
+            |                                        |
+            +-------------------+--------------------+
+                                |
+                                | HTTP REST/JSON Calls
+                                v
++-----------------------------------------------------------------+
+|                       SUPERMEMORY LOCAL                         |
+|     (Self-hosted memory service running daemon at port 6767)     |
+|                                                                 |
+|  +-----------------------------------------------------------+  |
+|  |                   API REST Endpoint Router                |  |
+|  +------------------------------+----------------------------+  |
+|                                 |                               |
+|  +------------------------------v----------------------------+  |
+|  |                  Semantic Extraction Engine               |  |
+|  |    (Identifies entities, resolves conflicting facts,      |  |
+|  |     merges memories, and consolidates knowledge graphs)   |  |
+|  +------------------------------+----------------------------+  |
+|                                 |                               |
+|  +------------------------------v----------------------------+  |
+|  |                       RAG Search Router                   |  |
+|  |    (Vector matches query tags with cosine similarity)     |  |
+|  +------------------------------+----------------------------+  |
++---------------------------------|-------------------------------+
+                                  |
+                                  | Persistent Storage
+                                  v
++-----------------------------------------------------------------+
+|                   PERSISTENT STORAGE ENGINES                    |
+|                                                                 |
+|  +--------------------+   +-------------------+   +----------+  |
+|  |    Vector Index    |   |  SQLite Metadata  |   | Knowledge|  |
+|  | (Dense Embeddings) |   | (Container Tags)  |   |  Graph   |  |
+|  +--------------------+   +-------------------+   +----------+  |
++-----------------------------------------------------------------+
+```
 
 ---
 
@@ -85,7 +168,7 @@ const memoir = new Memoir({
 
 ### `memoir.healthCheck(): Promise<boolean>`
 
-Check whether Supermemory Local is reachable. Never throws — returns `false` on any failure.
+Check whether Supermemory Local is reachable. **Never throws** — returns `false` on any failure.
 
 ```typescript
 const isUp = await memoir.healthCheck();
@@ -207,8 +290,8 @@ try {
 
 Memoir automatically retries **once** with a **300ms delay** for transient failures:
 
-- Retried: `MemoirTimeoutError`, `MemoirConnectionError`
-- Not retried: `MemoirAuthError`, `MemoirAPIError` (not transient — retrying wastes time)
+- ✅ Retried: `MemoirTimeoutError`, `MemoirConnectionError`
+- ❌ Not retried: `MemoirAuthError`, `MemoirAPIError` (not transient — retrying wastes time)
 
 This happens internally. The consumer sees at most one error after the retry has already been attempted.
 
