@@ -1,17 +1,17 @@
 # Getting Started
 
-Memoir is a lightweight, open-source TypeScript SDK designed to give AI-driven NPCs (or any conversational character) persistent, long-term memory. Instead of building a complex memory pipeline, vector search database, and conflict-resolution engine yourself, Memoir provides a simple, strongly-typed bridge to **Supermemory Local**.
+Memoir is a developer-centric Narrative AI Framework designed to give AI-driven NPCs persistent, long-term memory and rigid behavioral profiles. By wrapping **Supermemory Local**, it bridges the gap between unstructured text database memories and strict, deterministic game engines.
 
 ## Prerequisites
 
 Before using Memoir, you must have:
 
 1. **Node.js** version 18.0.0 or higher.
-2. **Supermemory Local** running on your local machine. You can start it using:
+2. **Supermemory Local** running on your local machine. Start it with:
    ```bash
    npx supermemory local
    ```
-   By default, Supermemory Local runs a REST API server at `http://localhost:6767`.
+   By default, Supermemory Local runs at `http://localhost:6767`.
 
 ## Installation
 
@@ -21,6 +21,8 @@ Install Memoir via npm:
 npm install memoir-npc
 ```
 
+---
+
 ## Quickstart
 
 Here is how you configure Memoir and give an NPC the ability to save and recall conversations:
@@ -28,13 +30,14 @@ Here is how you configure Memoir and give an NPC the ability to save and recall 
 ```typescript
 import { Memoir } from 'memoir-npc';
 
-// 1. Initialize Memoir pointing to your local Supermemory instance
+// 1. Initialize Memoir
 const memoir = new Memoir({
-  supermemoryApiKey: 'your_supermemory_key', // Required (can be dummy key for local mode)
-  supermemoryBaseUrl: 'http://localhost:6767'  // Default
+  supermemoryApiKey: 'your_supermemory_key',
+  geminiApiKey: 'your_gemini_api_key', // Required for advanced locking & chat features
+  supermemoryBaseUrl: 'http://localhost:6767'
 });
 
-// 2. Perform a health check before launching your game / application
+// 2. Perform a connectivity check
 const isReady = await memoir.healthCheck();
 if (!isReady) {
   console.error("Supermemory Local is not running! Run: npx supermemory local");
@@ -47,13 +50,66 @@ const merchant = memoir.npc('shopkeeper-aldaric');
 // 4. Recall memories of a specific player when they start talking
 const playerId = 'player-guild-leader';
 const pastMemories = await merchant.recallContext(playerId);
+```
 
-console.log('Past Context for prompt:', pastMemories);
-// Pass `pastMemories` into your AI model's context or system prompt!
+---
 
-// 5. Save the interaction once the NPC replies
-const playerInput = "Can you sell me that sword?";
-const npcReply = "Ah, the Blade of Dawn! It requires 500 gold coins, traveler.";
+## Advanced Features Setup
 
-await merchant.saveInteraction(playerId, playerInput, npcReply);
+Beyond simple database saves, Memoir includes a full narrative execution layer:
+
+### A. Persona Locking & Gossip Links
+
+```typescript
+// Lock Mom into a rigid psychological profile
+memoir.lockPersona("mom", {
+  archetype: "protective_parent",
+  attachmentStyle: "anxious",
+  stubbornness: "high",
+  tone: "warm but strict"
+});
+
+// Interconnect Mom and Blake (gossip network)
+memoir.createSocialLink("mom", "friend-b", {
+  relationship: "neighbors",
+  leakChance: 0.8
+});
+```
+
+### B. Structured Conversations
+
+Trigger structured dialogues with emotion/action tags in a single invocation:
+
+```typescript
+const response = await merchant.chat("player-1", "I'm looking for a sword.");
+
+console.log(response.text);   // Speeech: "Take a look at this iron blade."
+console.log(response.emote);  // Emotion: "neutral"
+console.log(response.action); // Action: "give_item"
+```
+
+### C. Deterministic Memory State Machines (D-MSM)
+
+Bind AI memory context to strict game engine state transitions:
+
+```typescript
+import { MemoirFSM } from 'memoir-npc';
+
+const guardFsm = new MemoirFSM({
+  initialState: "idle",
+  states: {
+    "idle": {
+      transitions: {
+        "player_is_threat": "attack"
+      }
+    },
+    "attack": {
+      transitions: {}
+    }
+  }
+});
+
+// Evaluate the memory graph and execute state transitions deterministically
+const activeState = await guardFsm.evaluateState("guard_npc", "player-1", memoir);
+console.log(activeState); // Returns "attack" if player made threats, "idle" otherwise.
 ```

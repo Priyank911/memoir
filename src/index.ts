@@ -25,9 +25,8 @@
  * @packageDocumentation
  */
 
-// ─── Core ──────────────────────────────────────────────────────────
-export { Memoir, NpcHandle } from "./memoir";
-export type { MemoirConfig } from "./memoir";
+export { Memoir, NpcHandle, MemoirFSM } from "./memoir";
+export { type MemoirConfig, type ChatResponse, type PersonaConfig, type SocialLink, type FsmConfig } from "./memoir";
 
 // ─── Errors ────────────────────────────────────────────────────────
 export {

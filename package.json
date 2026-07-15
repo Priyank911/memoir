@@ -1,6 +1,6 @@
 {
   "name": "memoir-npc",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Give AI game NPCs persistent, long-term memory across sessions. A thin, typed bridge over Supermemory Local.",
   "license": "MIT",
   "author": "",
@@ -45,7 +45,8 @@
     "postinstall": "node scripts/postinstall.js"
   },
   "dependencies": {
-    "supermemory": "4.24.12"
+    "supermemory": "4.24.12",
+    "@google/genai": "^1.0.0"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

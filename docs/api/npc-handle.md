@@ -34,6 +34,24 @@ const pastContext = await npc.recallContext('player-1');
 
 ---
 
+### `chat(playerId, playerInput)`
+
+Structured conversation chat driver. Automatically queries past memories, applies locked persona guardrails, generates dialogues in-character, extracts emotions/actions, saves interactions to databases, and propagates rumors to linked social network characters in a single step.
+
+* **Parameters:**
+  * `playerId` (`string`): The unique ID of the player.
+  * `playerInput` (`string`): What the player said.
+* **Returns:** `Promise<ChatResponse>` - An object containing the response text, emote, and action tag.
+
+```typescript
+const response = await npc.chat('player-1', "Hello, who are you?");
+console.log(response.text);   // Speech response
+console.log(response.emote);  // Emotion e.g. "happy"
+console.log(response.action); // Action e.g. "give_item"
+```
+
+---
+
 ### `saveInteraction(playerId, playerInput, npcReply)`
 
 Saves a player-NPC interaction to memory.

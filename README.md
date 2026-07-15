@@ -11,21 +11,23 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-black.svg?style=flat-square)](./LICENSE)
 [![Engine](https://img.shields.io/badge/engine-Supermemory-black.svg?style=flat-square)](https://docs.supermemory.ai)
 
-**Memoir** is a high-speed, developer-centric SDK built directly on top of the **Supermemory** AI memory engine. It gives AI game NPCs persistent, long-term memory across sessions by wrapping [Supermemory Local](https://docs.supermemory.ai) (a self-hosted memory engine) so you never touch raw memory database APIs directly. Install it, wire in three functions, and every NPC in your game remembers every player interaction — forever — with no database schema written by hand.
+Memoir is a high-speed, developer-centric Narrative AI Framework built directly on top of the Supermemory AI memory engine. It gives AI game NPCs persistent, long-term memory across sessions by wrapping Supermemory Local (a self-hosted memory engine) and supplying advanced character guardrail systems. 
+
+Install it, configure your character locks, and every NPC in your game remembers every player interaction and stays perfectly in character, with no manual database schema or prompt engineering.
 
 ---
 
 ## Features Overview
 
-*   **🧠 Persistent RAG Memory**: Saves NPC–Player interactions forever. NPCs remember quest details, player items, and choices across game sessions.
-*   **⚡ Zero Database Setup**: No database schemas to write. Pass dialogue logs and let the extraction engine resolve facts and relationships automatically.
-*   **👾 Gamer-Optimized**: High-speed, thin middleware designed to ensure AI processing doesn't freeze the main game thread.
-*   **🛡️ Strong Exception Safety**: Explicit exception classes for network drops, timeouts, and auth errors. Keep the AI dialogue loop running smoothly.
-*   **🔄 Resilient Auto-Retries**: Automated 1-time retry (300ms delay) for connection drops and timeouts. Keeps games fluid.
+*   **Persistent Context Memory**: Automatically saves NPC-Player interactions. NPCs recall quest choices, player items, and history across scenes.
+*   **Persona Locking via Tags**: Lock your NPCs into rigid psychological profiles (archetype, attachment style, stubbornness, tone) using system envelopes.
+*   **Proximity Gossip Network**: Interconnect NPC memory databases. When the player tells a secret to one character, it can leak as a rumor to neighboring NPCs automatically.
+*   **Structured Chat Driver**: Intercepts LLM calls, recalls context, checks locks, generates dialogues, parses emotion/action tags, and updates the database in a single step.
+*   **Resilient Auto-Retries**: Automated one-time retry (300ms delay) for transient connection drops and timeouts.
 
 ---
 
-## Install
+## Installation
 
 ```bash
 npm install memoir-npc
@@ -35,45 +37,71 @@ npm install memoir-npc
 
 ## Prerequisites
 
-Memoir requires **Supermemory Local** running on your machine. Start it with:
+Memoir requires Supermemory Local running on your machine. Start it in your terminal:
 
 ```bash
 npx supermemory local
 ```
 
-It runs at `http://localhost:6767` by default. See [Supermemory's docs](https://docs.supermemory.ai) for full setup instructions.
+It runs at `http://localhost:6767` by default. See Supermemory's documentation for full setup instructions.
 
 ---
 
-## Quickstart
+## Core Usage
+
+### 1. Initialize and Define Personas
 
 ```typescript
 import { Memoir } from "memoir-npc";
 
-// 1. Create a Memoir instance pointing to Supermemory Local
+// Initialize Memoir pointing to local Supermemory and Gemini
 const memoir = new Memoir({
-  supermemoryApiKey: process.env.SUPERMEMORY_API_KEY!,
-  supermemoryBaseUrl: "http://localhost:6767", // default
+  supermemoryApiKey: "your_supermemory_api_key",
+  geminiApiKey: "your_gemini_api_key",
+  supermemoryBaseUrl: "http://localhost:6767"
 });
 
-// 2. Check Supermemory is running
-const healthy = await memoir.healthCheck();
-if (!healthy) throw new Error("Start Supermemory: npx supermemory local");
+// Configure psychological guardrails for a character
+memoir.lockPersona("mom_npc", {
+  archetype: "protective_parent",
+  attachmentStyle: "anxious",
+  stubbornness: "high",
+  tone: "warm but strict",
+  description: "Caring mother who hates screens and wants the player home early."
+});
 
-// 3. Get an NPC handle
-const mage = memoir.npc("old-mage-001");
-
-// 4. Recall what the NPC knows about this player
-const pastContext = await mage.recallContext("player-1");
-
-// 5. Feed context into your LLM and get a reply
-const npcReply = await generateNPCDialogue(playerInput, pastContext);
-
-// 6. Save the interaction for next time
-await mage.saveInteraction("player-1", playerInput, npcReply);
+memoir.lockPersona("guard_npc", {
+  archetype: "corrupt_guard",
+  stubbornness: "high",
+  tone: "cynical"
+});
 ```
 
-That's it. The NPC now remembers this conversation next time, even across completely separate sessions.
+### 2. Configure the Proximity Gossip Network
+
+Establish connection paths and leak probabilities between NPC containers:
+
+```typescript
+// If the player tells a secret to Mom, she might leak it to the Guard
+memoir.createSocialLink("mom_npc", "guard_npc", {
+  relationship: "neighbors",
+  leakChance: 0.7
+});
+```
+
+### 3. Handle Dialogues with Structured Output
+
+Use the `chat` method to query memory, check guardrails, call the LLM, evaluate actions, and save the interaction automatically:
+
+```typescript
+const npc = memoir.npc("mom_npc");
+
+const response = await npc.chat("player-1", "I am leaving for the hackathon.");
+
+console.log(response.text);   // In-character speech (e.g. "Come back early!")
+console.log(response.emote);  // Extracted emotion (e.g. "worried")
+console.log(response.action); // Action tag (e.g. "none")
+```
 
 ---
 
@@ -87,57 +115,28 @@ Here is the data loop orchestration between your game code, Memoir SDK, and the 
 |      (Dialogue Loops, Quest Handlers, NPC AI controllers)       |
 +---------------+---------------------------------+---------------+
                 |                                 ^
-                | 1. saveInteraction()            | 2. recallContext()
-                |    (Player Input & NPC Reply)   |    (Formulated Prompt)
+                | 1. chat(playerId, input)        | 4. Returns:
+                |    (Triggers LLM generation)    |    { text, emote, action }
                 v                                 |
 +-------------------------------------------------+---------------+
 |                         MEMOIR SDK                              |
 |                                                                 |
 |  +--------------------+                    +----------------+   |
-|  |  NpcHandle Scoper  |                    | Timeout/Abort  |   |
-|  |  (Tag: npc:${id})  |                    |   Controller   |   |
+|  |  NpcHandle Scoper  |                    | Persona Engine |   |
+|  |  (Tag: npc:${id})  |                    |  (Guardrails)  |   |
 |  +--------+-----------+                    +-------+--------+   |
 |           |                                        |            |
+|           | 2. query database                      | 3. run LLM |
 |           v                                        v            |
 |  +--------------------+                    +----------------+   |
-|  |  Memory Formatter  |                    | Auto-Retry-Once|   |
-|  |  (Metadata Inject) |                    | (300ms delay)  |   |
-|  +--------+-----------+                    +-------+--------+   |
-+-----------|----------------------------------------|------------+
-            |                                        |
-            +-------------------+--------------------+
-                                |
-                                | HTTP REST/JSON Calls
-                                v
+|  | Supermemory Client |                    | Gemini Client  |   |
+|  +--------+-----------+                    +----------------+   |
+|           |                                                     |
++-----------|-----------------------------------------------------+
+            v
 +-----------------------------------------------------------------+
-|                       SUPERMEMORY LOCAL                         |
-|     (Self-hosted memory service running daemon at port 6767)     |
-|                                                                 |
-|  +-----------------------------------------------------------+  |
-|  |                   API REST Endpoint Router                |  |
-|  +------------------------------+----------------------------+  |
-|                                 |                               |
-|  +------------------------------v----------------------------+  |
-|  |                  Semantic Extraction Engine               |  |
-|  |    (Identifies entities, resolves conflicting facts,      |  |
-|  |     merges memories, and consolidates knowledge graphs)   |  |
-|  +------------------------------+----------------------------+  |
-|                                 |                               |
-|  +------------------------------v----------------------------+  |
-|  |                       RAG Search Router                   |  |
-|  |    (Vector matches query tags with cosine similarity)     |  |
-|  +------------------------------+----------------------------+  |
-+---------------------------------|-------------------------------+
-                                  |
-                                  | Persistent Storage
-                                  v
-+-----------------------------------------------------------------+
-|                   PERSISTENT STORAGE ENGINES                    |
-|                                                                 |
-|  +--------------------+   +-------------------+   +----------+  |
-|  |    Vector Index    |   |  SQLite Metadata  |   | Knowledge|  |
-|  | (Dense Embeddings) |   | (Container Tags)  |   |  Graph   |  |
-|  +--------------------+   +-------------------+   +----------+  |
+|                        SUPERMEMORY LOCAL                        |
+|           (Vector Database, Graph Store, SQLite)                |
 +-----------------------------------------------------------------+
 ```
 
@@ -145,176 +144,38 @@ Here is the data loop orchestration between your game code, Memoir SDK, and the 
 
 ## API Reference
 
-### `new Memoir(config)`
+### `new Memoir(config: MemoirConfig)`
 
-Creates a new Memoir instance. Every instance is independent — no global mutable state.
+Creates a new Memoir context instance.
 
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `supermemoryApiKey` | `string` | *(required)* | Your Supermemory API key |
-| `supermemoryBaseUrl` | `string` | `"http://localhost:6767"` | Base URL of Supermemory Local |
-| `requestTimeoutMs` | `number` | `5000` | Timeout per request (ms) |
-| `strict` | `boolean` | `false` | If `true`, `recallContext()` throws on failure instead of returning `""` |
+*   `supermemoryApiKey: string` - API token for Supermemory Local.
+*   `geminiApiKey?: string` - API key for Gemini models.
+*   `supermemoryBaseUrl?: string` - Base path of your Supermemory server (defaults to `http://localhost:6767`).
+*   `requestTimeoutMs?: number` - Request timeout limit (default: 5000ms).
+*   `strict?: boolean` - If true, throws errors rather than degrading gracefully on network failure.
 
-```typescript
-const memoir = new Memoir({
-  supermemoryApiKey: "sm_xxx",
-  requestTimeoutMs: 3000,
-  strict: false,
-});
-```
+### `memoir.lockPersona(npcId: string, config: PersonaConfig)`
 
----
+Binds rigid psychological constraints to an NPC.
+*   `archetype: string` - Core role profile.
+*   `attachmentStyle?: string` - Psychological attachment type.
+*   `stubbornness?: string` - Character resistance level.
+*   `tone?: string` - Speech style.
 
-### `memoir.healthCheck(): Promise<boolean>`
+### `memoir.createSocialLink(npcIdA: string, npcIdB: string, options: { relationship: string, leakChance: number })`
 
-Check whether Supermemory Local is reachable. **Never throws** — returns `false` on any failure.
+Binds two NPCs in a social network gossip connection. When interactions are saved to `npcIdA`, a processed rumor will be generated and saved to `npcIdB` according to the `leakChance` rate.
 
-```typescript
-const isUp = await memoir.healthCheck();
-if (!isUp) {
-  console.log("Run: npx supermemory local");
-}
-```
+### `npc.chat(playerId: string, playerInput: string): Promise<ChatResponse>`
 
----
+Queries memories, generates dialogues in-character, extracts emotions/actions, saves interactions to databases, and executes gossip propagation in a single invocation.
 
-### `memoir.npc(npcId): NpcHandle`
-
-Returns an NPC handle scoped to its own memory container. The container tag is derived deterministically as `npc:${npcId}`.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `npcId` | `string` | Stable, unique identifier for this NPC |
-
-```typescript
-const mage = memoir.npc("old-mage-001");
-const smith = memoir.npc("blacksmith-town-square");
-```
-
----
-
-### `npc.recallContext(playerId): Promise<string>`
-
-Pull everything this NPC knows about a specific player, returned as a `\n`-separated plain string ready to drop into an LLM prompt.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `playerId` | `string` | Unique identifier for the player |
-
-**Error behavior:**
-- **Default mode:** Returns `""` on failure (silent degradation — a game shouldn't crash mid-dialogue)
-- **Strict mode** (`{ strict: true }`): Throws a typed error
-
-```typescript
-const context = await mage.recallContext("player-1");
-const prompt = `You remember: ${context || "nothing yet, first meeting"}`;
-```
-
----
-
-### `npc.saveInteraction(playerId, playerInput, npcReply): Promise<void>`
-
-Write a player–NPC interaction to memory. Supermemory's extraction engine handles fact extraction — no custom parsing needed.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `playerId` | `string` | Unique identifier for the player |
-| `playerInput` | `string` | What the player said |
-| `npcReply` | `string` | What the NPC replied |
-
-**Error behavior:** Always throws typed errors on failure. A failed write is data loss — your app should decide how to handle it.
-
-```typescript
-try {
-  await mage.saveInteraction("player-1", "Where is the sword?", "In the cave to the north.");
-} catch (err) {
-  if (err instanceof MemoirConnectionError) {
-    // queue for retry
-  }
-}
-```
-
----
-
-### `npc.forget(playerId): Promise<void>`
-
-Wipe this NPC's memory of a specific player. Useful for demos, testing, and "new game" scenarios.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `playerId` | `string` | Player whose memories to erase |
-
-```typescript
-await mage.forget("player-1");
-```
-
----
-
-## Error Handling
-
-Memoir defines four typed error classes. Raw SDK/fetch errors never leak to the consumer.
-
-| Error Class | When Thrown | Recommended Handling |
-|---|---|---|
-| `MemoirConnectionError` | Supermemory unreachable (ECONNREFUSED, DNS failure, network error) | Check if Supermemory Local is running. Retry after delay. |
-| `MemoirAuthError` | Bad API key (HTTP 401/403) | Fix your API key. Do not retry. |
-| `MemoirTimeoutError` | Request exceeded `requestTimeoutMs` | Increase timeout or check Supermemory load. |
-| `MemoirAPIError` | Any other non-2xx response. Has `.statusCode` property. | Log and inspect the status code. |
-
-```typescript
-import {
-  Memoir,
-  MemoirConnectionError,
-  MemoirAuthError,
-  MemoirTimeoutError,
-  MemoirAPIError,
-} from "memoir-npc";
-
-try {
-  await npc.saveInteraction("player-1", input, reply);
-} catch (err) {
-  if (err instanceof MemoirConnectionError) {
-    console.error("Supermemory is down:", err.message);
-  } else if (err instanceof MemoirAuthError) {
-    console.error("Bad API key:", err.message);
-  } else if (err instanceof MemoirTimeoutError) {
-    console.error("Request timed out:", err.message);
-  } else if (err instanceof MemoirAPIError) {
-    console.error(`API error ${err.statusCode}:`, err.message);
-  }
-}
-```
-
-### Retry Policy
-
-Memoir automatically retries **once** with a **300ms delay** for transient failures:
-
-- ✅ Retried: `MemoirTimeoutError`, `MemoirConnectionError`
-- ❌ Not retried: `MemoirAuthError`, `MemoirAPIError` (not transient — retrying wastes time)
-
-This happens internally. The consumer sees at most one error after the retry has already been attempted.
-
----
-
-## How It Works
-
-Memoir is a thin bridge, not a memory engine. When you call `saveInteraction()`, Memoir formats the conversation and pushes it to Supermemory Local via its SDK. Supermemory's own extraction engine builds the knowledge graph — fact extraction, contradiction resolution, and memory consolidation all happen inside Supermemory. When you call `recallContext()`, Memoir queries Supermemory for everything it knows about that player-NPC pair and returns it as plain text. Memoir deliberately does not reimplement any of this intelligence.
-
----
-
-## Testing
-
-```bash
-# Unit tests (no network calls)
-npm test
-
-# Integration tests (requires Supermemory Local running)
-npx cross-env RUN_INTEGRATION=1 npx vitest run test/integration.test.ts
-```
+*   `playerId: string` - Unique user ID.
+*   `playerInput: string` - Player dialogue string.
+*   Returns: `Promise<{ text: string, emote: string, action: string }>`
 
 ---
 
 ## License
 
-MIT — see [LICENSE](./LICENSE)
+MIT

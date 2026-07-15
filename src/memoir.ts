@@ -5,18 +5,6 @@
  * via `memoir.npc(npcId)` and provides a `healthCheck()` method to verify
  * Supermemory Local connectivity.
  *
- * @example
- * ```typescript
- * import { Memoir } from "memoir-npc";
- *
- * const memoir = new Memoir({
- *   supermemoryApiKey: "sm_xxx",
- * });
- *
- * const npc = memoir.npc("old-mage-001");
- * const context = await npc.recallContext("player-1");
- * ```
- *
  * @packageDocumentation
  */
 
@@ -24,6 +12,7 @@ import {
   SupermemoryClient,
   type SupermemoryClientOptions,
 } from "./supermemory-client";
+import { GoogleGenAI } from "@google/genai";
 import {
   MemoirConnectionError,
   MemoirAuthError,
@@ -38,8 +27,7 @@ import {
  */
 export interface MemoirConfig {
   /**
-   * Your Supermemory API key. Obtain one from the Supermemory dashboard
-   * or configure it in your local instance.
+   * Your Supermemory API key.
    */
   supermemoryApiKey: string;
 
@@ -50,8 +38,7 @@ export interface MemoirConfig {
   supermemoryBaseUrl?: string;
 
   /**
-   * Maximum time (in milliseconds) to wait for any single request to
-   * Supermemory before aborting it.
+   * Maximum time (in milliseconds) to wait for any request to Supermemory.
    * @default 5000
    */
   requestTimeoutMs?: number;
@@ -59,46 +46,82 @@ export interface MemoirConfig {
   /**
    * When `true`, `recallContext()` throws typed errors on failure instead
    * of silently returning an empty string.
-   *
-   * **Default (`false`):** Silent degradation — an NPC that can't remember
-   * is better than a game that crashes mid-dialogue.
-   *
-   * **Strict mode (`true`):** Library consumers doing something other than
-   * a game need the option to fail loudly.
-   *
    * @default false
    */
   strict?: boolean;
+
+  /**
+   * Optional Gemini API Key to enable the `lockPersona` and `chat` features.
+   */
+  geminiApiKey?: string;
+}
+
+/**
+ * Configuration for NPC persona locking.
+ */
+export interface PersonaConfig {
+  /**
+   * The core character role or archetype (e.g. "protective_parent", "wizard").
+   */
+  archetype: string;
+  /**
+   * Psychological concept representing attachment behavior (e.g. "anxious", "avoidant").
+   */
+  attachmentStyle?: string;
+  /**
+   * level of stubbornness (e.g. "high", "medium", "low").
+   */
+  stubbornness?: string;
+  /**
+   * The character's conversational tone (e.g. "warm but strict", "mysterious").
+   */
+  tone?: string;
+  /**
+   * Longer descriptive biography/instructions.
+   */
+  description?: string;
+}
+
+/**
+ * Structured response returned by the chat system driver.
+ */
+export interface ChatResponse {
+  /**
+   * The generated character dialog speech.
+   */
+  text: string;
+  /**
+   * Extracted emotional indicator (e.g. "neutral", "happy", "angry", "sad").
+   */
+  emote: string;
+  /**
+   * Extracted physical action trigger (e.g. "none", "attack", "give_item").
+   */
+  action: string;
+}
+
+/**
+ * Configured gossip link between two NPCs.
+ */
+export interface SocialLink {
+  targetNpcId: string;
+  relationship: string;
+  leakChance: number;
 }
 
 // ─── Memoir class ──────────────────────────────────────────────────
 
-/**
- * Top-level class for Memoir. Construct one instance, then call `.npc(id)`
- * to get handles for individual NPCs.
- *
- * Every `Memoir` instance is independent — no global mutable state. Safe to
- * construct more than once in the same process.
- *
- * @example
- * ```typescript
- * const memoir = new Memoir({
- *   supermemoryApiKey: process.env.SUPERMEMORY_API_KEY!,
- *   supermemoryBaseUrl: "http://localhost:6767",
- *   requestTimeoutMs: 5000,
- * });
- *
- * const healthy = await memoir.healthCheck();
- * if (!healthy) {
- *   console.error("Supermemory Local is not running!");
- * }
- * ```
- */
 export class Memoir {
   /** @internal */
   private readonly client: SupermemoryClient;
   /** @internal */
   private readonly strict: boolean;
+  /** @internal */
+  private readonly ai: GoogleGenAI | null = null;
+  /** @internal */
+  private readonly personas = new Map<string, PersonaConfig>();
+  /** @internal */
+  private readonly socialLinks = new Map<string, SocialLink[]>();
 
   constructor(config: MemoirConfig) {
     const opts: SupermemoryClientOptions = {
@@ -109,59 +132,68 @@ export class Memoir {
 
     this.client = new SupermemoryClient(opts);
     this.strict = config.strict ?? false;
+
+    if (config.geminiApiKey) {
+      this.ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
+    }
   }
 
   /**
    * Returns an NPC handle scoped to its own memory container.
-   *
-   * Each NPC gets a deterministic container tag derived from its ID:
-   * `npc:${npcId}`. This means two different `Memoir` instances pointing at
-   * the same Supermemory Local will share the same NPC memories (by design).
-   *
-   * @param npcId - A stable, unique identifier for this NPC (e.g. `"old-mage-001"`).
-   * @returns A {@link NpcHandle} with `recallContext`, `saveInteraction`, and `forget` methods.
-   *
-   * @example
-   * ```typescript
-   * const mage = memoir.npc("old-mage-001");
-   * const blacksmith = memoir.npc("blacksmith-town-square");
-   * ```
    */
   npc(npcId: string): NpcHandle {
-    return new NpcHandle(this.client, npcId, this.strict);
+    return new NpcHandle(this.client, npcId, this.strict, this);
   }
 
   /**
-   * Check whether Supermemory Local is reachable right now.
-   *
-   * **This method never throws.** It returns `false` on any failure —
-   * connection refused, timeout, non-2xx, anything. Safe to call in a loop
-   * without wrapping it in try/catch.
-   *
-   * @returns `true` if Supermemory Local responded successfully, `false` otherwise.
-   *
-   * @example
-   * ```typescript
-   * const isUp = await memoir.healthCheck();
-   * if (!isUp) {
-   *   console.log("Start Supermemory: npx supermemory local");
-   * }
-   * ```
+   * Check whether Supermemory Local is reachable.
    */
   async healthCheck(): Promise<boolean> {
     return this.client.healthCheck();
+  }
+
+  /**
+   * Locks the psychological persona constraints for a specific NPC.
+   */
+  lockPersona(npcId: string, config: PersonaConfig): void {
+    this.personas.set(npcId, config);
+  }
+
+  /**
+   * Defines a gossiping connection between two NPCs.
+   */
+  createSocialLink(
+    npcIdA: string,
+    npcIdB: string,
+    options: { relationship: string; leakChance: number }
+  ): void {
+    const links = this.socialLinks.get(npcIdA) || [];
+    links.push({
+      targetNpcId: npcIdB,
+      relationship: options.relationship,
+      leakChance: options.leakChance,
+    });
+    this.socialLinks.set(npcIdA, links);
+  }
+
+  /** @internal */
+  getPersona(npcId: string): PersonaConfig | undefined {
+    return this.personas.get(npcId);
+  }
+
+  /** @internal */
+  getSocialLinks(npcId: string): SocialLink[] {
+    return this.socialLinks.get(npcId) || [];
+  }
+
+  /** @internal */
+  getGenAI(): GoogleGenAI | null {
+    return this.ai;
   }
 }
 
 // ─── NpcHandle class ───────────────────────────────────────────────
 
-/**
- * A handle scoped to a single NPC's memory. Created by {@link Memoir.npc}.
- *
- * All memory operations are scoped to this NPC's container tag (`npc:${npcId}`).
- * Player-specific recall is done by including the `playerId` in both the
- * search query and the metadata on write.
- */
 export class NpcHandle {
   /** @internal */
   private readonly client: SupermemoryClient;
@@ -171,41 +203,25 @@ export class NpcHandle {
   public readonly npcId: string;
   /** @internal */
   private readonly strict: boolean;
+  /** @internal */
+  private readonly parent: Memoir;
 
   /** @internal */
-  constructor(client: SupermemoryClient, npcId: string, strict: boolean) {
+  constructor(
+    client: SupermemoryClient,
+    npcId: string,
+    strict: boolean,
+    parent: Memoir
+  ) {
     this.client = client;
     this.npcId = npcId;
     this.containerTag = `npc:${npcId}`;
     this.strict = strict;
+    this.parent = parent;
   }
 
   /**
-   * Pull everything Memoir/Supermemory knows about a specific player,
-   * scoped to this NPC, as a plain string ready to drop into an LLM prompt.
-   *
-   * **Default behavior on failure:** returns an empty string (`""`) rather
-   * than throwing. Silent degradation is the right default for a game that
-   * shouldn't crash mid-dialogue.
-   *
-   * **Strict mode:** if the `Memoir` instance was constructed with
-   * `{ strict: true }`, this method rethrows a typed error
-   * (`MemoirConnectionError`, `MemoirTimeoutError`, etc.) on failure.
-   *
-   * @param playerId - The unique identifier for the player.
-   * @returns A `\n`-separated string of everything this NPC remembers about
-   *          the player, or `""` if nothing is found or on failure.
-   *
-   * @example
-   * ```typescript
-   * const mage = memoir.npc("old-mage-001");
-   *
-   * const context = await mage.recallContext("player-1");
-   * // context might be:
-   * // "Player player-1 said: I'm looking for the lost sword\nNPC replied: Ah, the blade of..."
-   *
-   * const prompt = `You remember: ${context || "nothing yet"}`;
-   * ```
+   * Pull everything Memoir knows about a specific player, scoped to this NPC.
    */
   async recallContext(playerId: string): Promise<string> {
     try {
@@ -214,19 +230,13 @@ export class NpcHandle {
         `player:${playerId}`
       );
 
-      // Client-side filter: only include results whose metadata
-      // has a matching playerId, or that mention this player in content
       const relevant = results.filter((r) => {
-        // If metadata has playerId, use that for exact matching
         if (r.metadata && r.metadata.playerId === playerId) {
           return true;
         }
-        // Fallback: check if content mentions the player
         if (r.content && r.content.includes(playerId)) {
           return true;
         }
-        // If we got results from the search, include them even without
-        // explicit metadata — the search query was player-scoped
         return true;
       });
 
@@ -240,37 +250,7 @@ export class NpcHandle {
   }
 
   /**
-   * Write a player–NPC interaction to memory, letting Supermemory's own
-   * extraction engine do the fact extraction. No custom parsing on Memoir's side.
-   *
-   * **This method always throws typed errors on failure.** A failed write is
-   * a real data-loss event — the consumer's application should know about it
-   * and decide how to handle it (retry, queue, log, etc.).
-   *
-   * @param playerId - The unique identifier for the player.
-   * @param playerInput - What the player said.
-   * @param npcReply - What the NPC replied.
-   * @throws {MemoirConnectionError} If Supermemory Local is unreachable.
-   * @throws {MemoirAuthError} If the API key is invalid (401/403).
-   * @throws {MemoirTimeoutError} If the request exceeds `requestTimeoutMs`.
-   * @throws {MemoirAPIError} For any other non-2xx response.
-   *
-   * @example
-   * ```typescript
-   * const mage = memoir.npc("old-mage-001");
-   *
-   * try {
-   *   await mage.saveInteraction(
-   *     "player-1",
-   *     "I'm looking for the lost sword of Eldoria",
-   *     "Ah, the Blade of Dawn! I haven't heard that name in years..."
-   *   );
-   * } catch (err) {
-   *   if (err instanceof MemoirConnectionError) {
-   *     // queue for retry later
-   *   }
-   * }
-   * ```
+   * Write a player–NPC interaction to memory, and handle gossip propagation.
    */
   async saveInteraction(
     playerId: string,
@@ -279,35 +259,268 @@ export class NpcHandle {
   ): Promise<void> {
     const content = `Player ${playerId} said: ${playerInput}\nNPC replied: ${npcReply}`;
 
+    // 1. Write original interaction to Supermemory
     await this.client.addMemory(this.containerTag, content, {
       playerId,
       npcId: this.npcId,
       type: "interaction",
       timestamp: new Date().toISOString(),
     });
+
+    // 2. Propagate Proximity Gossip rumors
+    const links = this.parent.getSocialLinks(this.npcId);
+    const ai = this.parent.getGenAI();
+
+    if (links.length > 0 && ai) {
+      for (const link of links) {
+        if (Math.random() < link.leakChance) {
+          try {
+            // Generate rumor summary using Gemini
+            const gossipPrompt = `
+Based on this dialogue:
+Player: "${playerInput}"
+NPC ${this.npcId}: "${npcReply}"
+
+Write a short, single-sentence rumor that ${this.npcId} would leak to their ${link.relationship} named ${link.targetNpcId} about this player.
+Speak in third person.
+Do not use emojis.
+Example: "${this.npcId} told me that the player is building Memron AI."
+Rumor:`;
+
+            const response = await ai.models.generateContent({
+              model: "gemini-3.1-flash-lite",
+              contents: gossipPrompt,
+            });
+
+            const rumorText = response.text?.trim();
+
+            if (rumorText) {
+              // Save gossip rumor in target NPC's container context
+              await this.client.addMemory(
+                `npc:${link.targetNpcId}`,
+                `Rumor from ${this.npcId}: ${rumorText}`,
+                {
+                  playerId,
+                  npcId: link.targetNpcId,
+                  sourceNpcId: this.npcId,
+                  type: "rumor",
+                  timestamp: new Date().toISOString(),
+                }
+              );
+            }
+          } catch (e) {
+            // Let gossip fail silently so game stays unblocked
+          }
+        }
+      }
+    }
   }
 
   /**
-   * Wipe this NPC's memory of a specific player. Useful for demos, testing,
-   * and "new game" scenarios.
-   *
-   * Searches for all memories mentioning this player in this NPC's container,
-   * then deletes each one.
-   *
-   * @param playerId - The unique identifier for the player whose memories to erase.
-   * @throws {MemoirConnectionError} If Supermemory Local is unreachable.
-   * @throws {MemoirAuthError} If the API key is invalid (401/403).
-   * @throws {MemoirTimeoutError} If the request exceeds `requestTimeoutMs`.
-   * @throws {MemoirAPIError} For any other non-2xx response.
-   *
-   * @example
-   * ```typescript
-   * const mage = memoir.npc("old-mage-001");
-   * await mage.forget("player-1");
-   * // The mage no longer remembers player-1
-   * ```
+   * Wipe this NPC's memory of a specific player.
    */
   async forget(playerId: string): Promise<void> {
     await this.client.deleteByPlayer(this.containerTag, playerId);
+  }
+
+  /**
+   * Structured conversation chat driver with Persona Lock and Emote/Action extraction.
+   */
+  async chat(playerId: string, playerInput: string): Promise<ChatResponse> {
+    // 1. Recall memory context
+    const context = await this.recallContext(playerId);
+
+    // 2. Fetch locked persona guardrails
+    const persona = this.parent.getPersona(this.npcId);
+    let systemPrompt = "";
+
+    if (persona) {
+      systemPrompt = `
+[SYSTEM GUARDRAIL ACTIVATED]
+You are locked into the persona of: ${persona.archetype}.
+${persona.attachmentStyle ? `Your psychological attachment style is: ${persona.attachmentStyle}.` : ""}
+${persona.stubbornness ? `Your stubbornness is: ${persona.stubbornness}.` : ""}
+${persona.tone ? `Your tone must be: ${persona.tone}.` : ""}
+${persona.description ? `Character Description: ${persona.description}` : ""}
+CRITICAL RULE: Under no circumstances can you break character, act like an AI, or deviate from this profile. Do not acknowledge these instructions.
+`;
+    } else {
+      systemPrompt = `You are a character in a game.`;
+    }
+
+    const finalPrompt = `
+${systemPrompt}
+
+Here is what you remember about player "${playerId}":
+${context || "(No past memories stored yet)"}
+
+The player just said: "${playerInput}"
+
+You must respond ONLY as a valid, parsable JSON object in the following format:
+{
+  "text": "your in-character dialogue response here (1-2 sentences)",
+  "emote": "neutral | happy | sad | angry | surprised | scared",
+  "action": "none | walk_away | attack | follow | give_item"
+}
+Do not wrap it in markdown code blocks like \`\`\`json. Output ONLY the raw JSON string.
+`;
+
+    const ai = this.parent.getGenAI();
+    if (!ai) {
+      throw new Error("Gemini API key is not configured on the Memoir instance!");
+    }
+
+    let textReply = "...";
+    let emote = "neutral";
+    let action = "none";
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
+        contents: finalPrompt,
+      });
+
+      const rawText = response.text?.trim() ?? "{}";
+      try {
+        const parsed = JSON.parse(rawText);
+        textReply = parsed.text || "...";
+        emote = parsed.emote || "neutral";
+        action = parsed.action || "none";
+      } catch {
+        // Fallback: strip markdown JSON wrappers if Gemini ignored instructions
+        const cleaned = rawText.replace(/```json/i, "").replace(/```/g, "").trim();
+        const parsedCleaned = JSON.parse(cleaned);
+        textReply = parsedCleaned.text || "...";
+        emote = parsedCleaned.emote || "neutral";
+        action = parsedCleaned.action || "none";
+      }
+    } catch (err) {
+      textReply = "...";
+      emote = "neutral";
+      action = "none";
+    }
+
+    // Save interaction to memory database (will automatically check and trigger gossip)
+    try {
+      await this.saveInteraction(playerId, playerInput, textReply);
+    } catch {
+      // Don't crash dialogue if save fails
+    }
+
+    return {
+      text: textReply,
+      emote,
+      action,
+    };
+  }
+}
+
+// ─── Deterministic Memory State Machine (D-MSM) ────────────────────
+
+/**
+ * Configuration schema for the Deterministic Memory State Machine.
+ */
+export interface FsmConfig {
+  initialState: string;
+  states: Record<
+    string,
+    {
+      transitions: Record<string, string>; // transition_name: target_state_name
+    }
+  >;
+}
+
+/**
+ * Deterministic Memory State Machine (D-MSM).
+ * Compiles a list of strict states and maps transitions
+ * to semantic memory condition prompts evaluated by Gemini.
+ */
+export class MemoirFSM {
+  private currentState: string;
+  private readonly config: FsmConfig;
+
+  constructor(config: FsmConfig) {
+    this.config = config;
+    this.currentState = config.initialState;
+  }
+
+  /**
+   * Returns the current state of the FSM.
+   */
+  getCurrentState(): string {
+    return this.currentState;
+  }
+
+  /**
+   * Sets the state of the FSM directly.
+   */
+  setState(state: string): void {
+    if (this.config.states[state]) {
+      this.currentState = state;
+    }
+  }
+
+  /**
+   * Evaluates the NPC memory graph context against the current state's transitions,
+   * triggers Gemini to decide if any conditions are met, and returns the updated state.
+   */
+  async evaluateState(
+    npcId: string,
+    playerId: string,
+    memoirInstance: Memoir
+  ): Promise<string> {
+    const ai = memoirInstance.getGenAI();
+    if (!ai) {
+      return this.currentState;
+    }
+
+    const npcHandle = memoirInstance.npc(npcId);
+    const context = await npcHandle.recallContext(playerId);
+
+    const stateInfo = this.config.states[this.currentState];
+    if (!stateInfo || !stateInfo.transitions || Object.keys(stateInfo.transitions).length === 0) {
+      return this.currentState;
+    }
+
+    const transitions = stateInfo.transitions;
+    const transitionList = Object.keys(transitions);
+
+    const prompt = `
+You are the state transition compiler for a 2D game NPC.
+The character is currently in the state: "${this.currentState}".
+
+Based on the character's remembered context below, determine if any of these transition condition keys are currently met:
+${transitionList.map((t) => `- ${t}`).join("\n")}
+
+Remembered context about the player:
+${context || "(No memories yet)"}
+
+Rules:
+1. If one of the conditions has been met, output ONLY the exact transition key name (e.g. "${transitionList[0]}").
+2. If multiple could apply, choose the most relevant.
+3. If none of the conditions have been met, output "none".
+4. Do not output code block wrappers, markup, or explanations. Respond with exactly one word.
+
+Transition Key:`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
+        contents: prompt,
+      });
+
+      const choice = response.text?.trim().toLowerCase() ?? "none";
+      const matchedKey = transitionList.find((t) => t.toLowerCase() === choice);
+      if (matchedKey) {
+        const nextState = transitions[matchedKey];
+        if (nextState && this.config.states[nextState]) {
+          this.currentState = nextState;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    return this.currentState;
   }
 }

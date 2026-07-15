@@ -1,46 +1,71 @@
 # Basic NPC Example
 
-This example demonstrates how to integrate Memoir with the official **Gemini SDK** (`@google/genai`) to create a conversational loop for an NPC named Aldric.
+This example demonstrates how to integrate Memoir to run a command-line conversation loop for an NPC wizard named Aldric, complete with psychological persona locks, automated memory updates, and deterministic state transitions.
 
-## Full Code Example
+## Code Example
 
-Ensure you have installed Memoir and the Gemini SDK:
+First, install the Memoir SDK:
 ```bash
-npm install memoir-npc @google/genai dotenv tsx
+npm install memoir-npc tsx
 ```
 
 Create a file named `aldric.ts`:
 
 ```typescript
-import { Memoir } from 'memoir-npc';
-import { GoogleGenAI } from '@google/genai';
+import { Memoir, MemoirFSM } from 'memoir-npc';
 import * as readline from 'node:readline';
-import 'dotenv/config';
 
 // 1. Initialize Memoir
 const memoir = new Memoir({
-  supermemoryApiKey: process.env.SUPERMEMORY_API_KEY ?? 'test',
+  supermemoryApiKey: 'test',
+  geminiApiKey: process.env.GEMINI_API_KEY!, // Loaded from environment
   supermemoryBaseUrl: 'http://localhost:6767'
 });
 
-// 2. Initialize Gemini
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY!
+// 2. Lock Aldric's Persona
+memoir.lockPersona("aldric", {
+  archetype: "wise_wizard",
+  attachmentStyle: "relaxed",
+  stubbornness: "high",
+  tone: "mysterious and helpful",
+  description: "An ancient wizard who guards the dungeon gates. Speaks cryptically in 1-2 short sentences."
 });
 
-// Define personality and instruction set
-const SYSTEM_PROMPT = `You are Aldric, a wise old wizard.
-Reply in 1-2 short sentences.
-Reference past memories if they are provided.`;
+// 3. Define State Machine for the game engine
+const wizardFsm = new MemoirFSM({
+  initialState: "idle",
+  states: {
+    "idle": {
+      transitions: {
+        "player_has_weapon": "cautious",
+        "player_is_respectful": "friendly"
+      }
+    },
+    "cautious": {
+      transitions: {
+        "player_threatens": "hostile",
+        "player_holstered_weapon": "idle"
+      }
+    },
+    "friendly": {
+      transitions: {
+        "player_steals": "hostile"
+      }
+    },
+    "hostile": {
+      transitions: {}
+    }
+  }
+});
 
-async function chat() {
+async function main() {
   const isUp = await memoir.healthCheck();
   if (!isUp) {
     console.error("Supermemory Local is down! Run `npx supermemory local` first.");
     process.exit(1);
   }
 
-  const npc = memoir.npc('aldric-the-wizard');
+  const npc = memoir.npc('aldric');
   const playerId = 'player-1';
 
   const rl = readline.createInterface({
@@ -55,23 +80,13 @@ async function chat() {
         return;
       }
 
-      // 1. Recall past memories for this player
-      const context = await npc.recallContext(playerId);
+      // 1. Trigger conversation (queries memory, locks persona, generates response & updates DB)
+      const response = await npc.chat(playerId, input);
+      console.log(`Aldric [Emotion: ${response.emote}]: ${response.text}`);
 
-      // 2. Build full prompt
-      const prompt = `${SYSTEM_PROMPT}\n\nMemories of this player:\n${context || 'None'}\n\nPlayer: "${input}"\n\nWizard:`;
-
-      // 3. Generate response
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt
-      });
-      const reply = response.text?.trim() ?? '...';
-
-      console.log(`Aldric: ${reply}`);
-
-      // 4. Save interaction to memory
-      await npc.saveInteraction(playerId, input, reply);
+      // 2. Evaluate state transitions deterministically
+      const state = await wizardFsm.evaluateState("aldric", playerId, memoir);
+      console.log(`[D-MSM STATE TRANSITION: ${state.toUpperCase()}]`);
 
       ask();
     });
@@ -81,9 +96,11 @@ async function chat() {
   ask();
 }
 
-chat();
+main();
 ```
+
 To run the script:
 ```bash
+export GEMINI_API_KEY="your_api_key"
 npx tsx aldric.ts
 ```

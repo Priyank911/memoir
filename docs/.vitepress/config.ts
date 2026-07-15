@@ -34,6 +34,7 @@ export default defineConfig({
         items: [
           { text: 'Memoir Class', link: '/api/memoir' },
           { text: 'NpcHandle Class', link: '/api/npc-handle' },
+          { text: 'MemoirFSM Class', link: '/api/fsm' },
           { text: 'Errors', link: '/api/errors' }
         ]
       },

@@ -1,114 +1,75 @@
 # How It Works
 
-Memoir is a high-performance, strongly-typed bridge between your game engine and the Supermemory Local memory engine. Rather than managing vector databases, building custom entity extractors, or orchestrating database transactions, your game queries a clean, gamer-optimized SDK while Memoir delegates state management to Supermemory.
+Memoir is a developer-centric Narrative AI Framework that sits between your game engine and the Supermemory Local database engine. Rather than managing vector databases, building custom entity extractors, or formatting prompt templates, Memoir exposes simple APIs while managing the complex cognitive cycles under the hood.
 
 ---
 
 ## Technical Architecture
 
-The diagram below outlines the deep, end-to-end memory flow during a gameplay dialogue session. It details how Memoir isolates NPC scopes, retries network failures, formats inputs, and interfaces with Supermemory's vector database, metadata stores, and entity graphs:
+The diagram below outlines the runtime data loops and operations of Memoir's core subsystems:
 
-<div class="architecture-diagram">
-<pre>
+```text
 +-----------------------------------------------------------------+
 |                        YOUR GAME ENGINE                         |
 |      (Dialogue Loops, Quest Handlers, NPC AI controllers)       |
 +---------------+---------------------------------+---------------+
                 |                                 ^
-                | 1. saveInteraction()            | 2. recallContext()
-                |    (Player Input & NPC Reply)   |    (Formulated Prompt)
-                v                                 |
+                | 1. npc.chat(playerId, input)    | 5. Returns:
+                |    (Or MemoirFSM evaluation)    |    { text, emote, action }
+                v                                 |    (or deterministic state)
 +-------------------------------------------------+---------------+
 |                         MEMOIR SDK                              |
 |                                                                 |
-|  +--------------------+                    +----------------+   |
-|  |  NpcHandle Scoper  |                    | Timeout/Abort  |   |
-|  |  (Tag: npc:${id})  |                    |   Controller   |   |
-|  +--------+-----------+                    +-------+--------+   |
-|           |                                        |            |
-|           v                                        v            |
-|  +--------------------+                    +----------------+   |
-|  |  Memory Formatter  |                    | Auto-Retry-Once|   |
-|  |  (Metadata Inject) |                    | (300ms delay)  |   |
-|  +--------+-----------+                    +-------+--------+   |
-+-----------|----------------------------------------|------------+
-            |                                        |
-            +-------------------+--------------------+
-                                |
-                                | HTTP REST/JSON Calls
-                                v
-+-----------------------------------------------------------------+
-|                       SUPERMEMORY LOCAL                         |
-|     (Self-hosted memory service running daemon at port 6767)     |
-|                                                                 |
-|  +-----------------------------------------------------------+  |
-|  |                   API REST Endpoint Router                |  |
-|  +------------------------------+----------------------------+  |
-|                                 |                               |
-|  +------------------------------v----------------------------+  |
-|  |                  Semantic Extraction Engine               |  |
-|  |    (Identifies entities, resolves conflicting facts,      |  |
-|  |     merges memories, and consolidates knowledge graphs)   |  |
-|  +------------------------------+----------------------------+  |
-|                                 |                               |
-|  +------------------------------v----------------------------+  |
-|  |                       RAG Search Router                   |  |
-|  |    (Vector matches query tags with cosine similarity)     |  |
-|  +------------------------------+----------------------------+  |
-+---------------------------------|-------------------------------+
-                                  |
-                                  | Persistent Storage
-                                  v
-+-----------------------------------------------------------------+
-|                   PERSISTENT STORAGE ENGINES                    |
-|                                                                 |
-|  +--------------------+   +-------------------+   +----------+  |
-|  |    Vector Index    |   |  SQLite Metadata  |   | Knowledge|  |
-|  | (Dense Embeddings) |   | (Container Tags)  |   |  Graph   |  |
-|  +--------------------+   +-------------------+   +----------+  |
-+-----------------------------------------------------------------+
-</pre>
-</div>
-
----
-
-## Scope Isolation (Container Tags)
-
-To prevent an NPC's memory from leaking into another (e.g. preventing the shopkeeper from knowing a secret the wizard told the player), Memoir enforces strict memory isolation using **Container Tags**.
-
-Every NPC initialized via `memoir.npc(npcId)` is bound to a deterministic, unique tag:
-```typescript
-const containerTag = `npc:${npcId}`;
+|  +--------------------+   +-------------------+                 |
+|  |  NpcHandle Scoper  |   |   Persona Engine  |                 |
+|  |  (Tag: npc:${id})  |   |   (Guardrails)    |                 |
+|  +--------+-----------+   +---------+---------+                 |
+|           |                         |                           |
+|           | recallContext()         | wraps locked prompts      |
+|           v                         v                           |
+|  +--------+-----------+   +---------+---------+                 |
+|  | Supermemory Client |   |   Gemini Client   |                 |
+|  +--------+-----------+   +---------+---------+                 |
+|           |                         |                           |
++-----------|-------------------------|---------------------------+
+            | HTTP calls              | generateContent()
+            v                         v
++-----------------------+   +-------------------------------------+
+|   SUPERMEMORY LOCAL   |   |        GEMINI INFERENCE API         |
+|  (Vector DB / Graph)  |   |   (JSON Chat & FSM Evaluations)     |
++-----------------------+   +-------------------------------------+
 ```
 
-- When storing context via `saveInteraction()`, Memoir associates the content and structured metadata strictly with this container.
-- When retrieving context via `recallContext()`, Memoir limits vector search queries to matching container tags.
+---
+
+## Core Subsystems
+
+### 1. Persona Locking (Guardrails)
+
+AI models are probabilistic; they can easily break character or hallucinate if the user says something unexpected. To solve this, Memoir introduces **Persona Locking**.
+
+* When a developer defines a lock configuration (archetype, attachment style, stubbornness, tone), Memoir compiles these attributes into a rigid `[SYSTEM GUARDRAIL ACTIVATED]` block.
+* When `chat` is called, Memoir automatically retrieves the active lock and appends it to the very beginning of the prompt context, guaranteeing that Gemini adheres strictly to the character's psychology.
 
 ---
 
-## Detailed Data Flows
+### 2. Proximity Gossip Network
 
-### 1. Storing Memories (`saveInteraction`)
+In traditional games, sharing knowledge across separate NPCs requires complex global databases and event routers. Memoir solves this by managing automated gossip inside the API wrapper:
 
-When you call `await npc.saveInteraction(playerId, playerInput, npcReply)`:
-1. **Formatting**: Memoir constructs a plaintext conversation snippet:
-   ```
-   Player <playerId> said: <playerInput>
-   NPC replied: <npcReply>
-   ```
-2. **Metadata Injection**: Memoir appends crucial search vectors as structural JSON metadata:
-   - `playerId`: The ID of the player participating in the dialogue.
-   - `npcId`: The unique ID of the scoped NPC.
-   - `type`: Classified as `"interaction"`.
-   - `timestamp`: High-precision ISO string.
-3. **Execution & Retry**: The client fires a POST request to Supermemory Local's database router. If a transient network glitch or connection timeout occurs, the internal retry policy halts for 300ms before attempting a fallback dispatch.
-4. **Extraction**: Supermemory parses the text, extracts atomic facts, resolves semantic discrepancies with past inputs, and stores the new indices.
+1. The developer links NPCs together via `memoir.createSocialLink(npcIdA, npcIdB, { leakChance })`.
+2. When the player saves an interaction to `npcIdA`, Memoir rolls a check against the `leakChance` rate.
+3. If it passes, Memoir fires a background prompt to Gemini, feeding the dialog history and asking it to write a short, third-person rumor note (e.g. *"Mom told me that the player is leaving town"*).
+4. Memoir writes this generated rumor directly into `npcIdB`'s memory container context.
+5. Next time the player speaks to NPC B, `recallContext` will pull this rumor block naturally, and NPC B will gossip about it.
 
-### 2. Recalling Context (`recallContext`)
+---
 
-When you call `await npc.recallContext(playerId)`:
-1. **Targeted Vector Search**: Memoir initiates a query scoped to the NPC's container tag, searching specifically for records tagged with `player:${playerId}`.
-2. **Client-Side Filtering**: To achieve maximum accuracy and zero memory leakage, Memoir performs a strict structural check:
-   - It verifies that the returned memory matches the `playerId` inside the metadata, OR
-   - It matches context mentioning the player ID within the body text.
-3. **String Consolidation**: Verified facts are joined with newline separators (`\n`) and returned as a single context block, ready to be injected straight into your LLM's system prompt.
+### 3. Deterministic Memory State Machines (D-MSM)
+
+Generative AI dialog is unstructured and fuzzy, but game engines run on strict, deterministic code (e.g. playing specific animations). Memoir's `MemoirFSM` acts as the translator:
+
+1. The developer defines a state map containing strict states (e.g. `idle`, `hostile`, `friendly`) and transitional conditions.
+2. When `fsm.evaluateState()` is called, Memoir retrieves the current NPC memory context.
+3. It asks Gemini to evaluate the memory graph against the current state's transitions and choose exactly one matched condition key, or return `"none"`.
+4. Memoir validates the chosen key against the FSM configuration. If valid, the state transitions. If it hallucinates, the FSM ignores it and remains in the current state safely, preventing game engine crashes.
