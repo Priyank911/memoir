@@ -254,7 +254,7 @@ async function main() {
         // 3. Generate reply with Gemini
         process.stdout.write(`  ${C.dim}  ⟳ generating NPC reply via Gemini...${C.reset}`);
         const response = await ai.models.generateContent({
-          model: "gemini-3.1-flash-lite",
+          model: "gemini-3.5-flash",
           contents: fullPrompt,
         });
 

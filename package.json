@@ -1,6 +1,6 @@
 {
   "name": "memoir-npc",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Give AI game NPCs persistent, long-term memory across sessions. A thin, typed bridge over Supermemory Local.",
   "license": "MIT",
   "author": "",

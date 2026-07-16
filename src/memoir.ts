@@ -122,6 +122,10 @@ export class Memoir {
   private readonly personas = new Map<string, PersonaConfig>();
   /** @internal */
   private readonly socialLinks = new Map<string, SocialLink[]>();
+  
+  // Short-Term Session Cache Map (Key: "npcId:playerId", Value: Array<{input, reply}>)
+  /** @internal */
+  private readonly sessionHistories = new Map<string, Array<{ input: string; reply: string }>>();
 
   constructor(config: MemoirConfig) {
     const opts: SupermemoryClientOptions = {
@@ -190,6 +194,30 @@ export class Memoir {
   getGenAI(): GoogleGenAI | null {
     return this.ai;
   }
+
+  // Short-Term Session Cache Helper Methods
+  /** @internal */
+  getSessionHistory(npcId: string, playerId: string): Array<{ input: string; reply: string }> {
+    const key = `${npcId}:${playerId}`;
+    return this.sessionHistories.get(key) || [];
+  }
+
+  /** @internal */
+  addSessionTurn(npcId: string, playerId: string, input: string, reply: string): void {
+    const key = `${npcId}:${playerId}`;
+    const history = this.sessionHistories.get(key) || [];
+    history.push({ input, reply });
+    if (history.length > 5) {
+      history.shift(); // Keep sliding window at last 5 turns
+    }
+    this.sessionHistories.set(key, history);
+  }
+
+  /** @internal */
+  clearSessionHistory(npcId: string, playerId: string): void {
+    const key = `${npcId}:${playerId}`;
+    this.sessionHistories.delete(key);
+  }
 }
 
 // ─── NpcHandle class ───────────────────────────────────────────────
@@ -222,12 +250,17 @@ export class NpcHandle {
 
   /**
    * Pull everything Memoir knows about a specific player, scoped to this NPC.
+   * Can pass an optional topicQuery to retrieve semantically matching long-term memories.
    */
-  async recallContext(playerId: string): Promise<string> {
+  async recallContext(playerId: string, topicQuery?: string): Promise<string> {
     try {
+      // If topicQuery is provided, query Supermemory with the topic vectors.
+      // Otherwise, search for the player tag directly.
+      const queryStr = topicQuery ? topicQuery : `player:${playerId}`;
+      
       const results = await this.client.searchMemories(
         this.containerTag,
-        `player:${playerId}`
+        queryStr
       );
 
       const relevant = results.filter((r) => {
@@ -321,16 +354,20 @@ Rumor:`;
    */
   async forget(playerId: string): Promise<void> {
     await this.client.deleteByPlayer(this.containerTag, playerId);
+    this.parent.clearSessionHistory(this.npcId, playerId);
   }
 
   /**
-   * Structured conversation chat driver with Persona Lock and Emote/Action extraction.
+   * Structured conversation chat driver with Persona Lock, Session History Cache, and Emote/Action extraction.
    */
   async chat(playerId: string, playerInput: string): Promise<ChatResponse> {
-    // 1. Recall memory context
-    const context = await this.recallContext(playerId);
+    // 1. Recall topic-relevant long-term memory context
+    const context = await this.recallContext(playerId, playerInput);
 
-    // 2. Fetch locked persona guardrails
+    // 2. Fetch short-term session history from Memoir cache
+    const history = this.parent.getSessionHistory(this.npcId, playerId);
+
+    // 3. Fetch locked persona guardrails
     const persona = this.parent.getPersona(this.npcId);
     let systemPrompt = "";
 
@@ -348,12 +385,20 @@ CRITICAL RULE: Under no circumstances can you break character, act like an AI, o
       systemPrompt = `You are a character in a game.`;
     }
 
+    // Format recent session history block
+    let historyBlock = "";
+    if (history.length > 0) {
+      historyBlock = `\nRecent conversation history in this current session:\n${history
+        .map((h) => `Player: "${h.input}"\nNPC: "${h.reply}"`)
+        .join("\n")}\n`;
+    }
+
     const finalPrompt = `
 ${systemPrompt}
 
-Here is what you remember about player "${playerId}":
+Here is what you remember about player "${playerId}" (long-term memory):
 ${context || "(No past memories stored yet)"}
-
+${historyBlock}
 The player just said: "${playerInput}"
 
 You must respond ONLY as a valid, parsable JSON object in the following format:
@@ -400,12 +445,15 @@ Do not wrap it in markdown code blocks like \`\`\`json. Output ONLY the raw JSON
       action = "none";
     }
 
-    // Save interaction to memory database (will automatically check and trigger gossip)
+    // 4. Save interaction to long-term memory database (will automatically check and trigger gossip)
     try {
       await this.saveInteraction(playerId, playerInput, textReply);
     } catch {
       // Don't crash dialogue if save fails
     }
+
+    // 5. Update short-term session history cache in parent Memoir instance
+    this.parent.addSessionTurn(this.npcId, playerId, playerInput, textReply);
 
     return {
       text: textReply,
@@ -475,7 +523,17 @@ export class MemoirFSM {
     }
 
     const npcHandle = memoirInstance.npc(npcId);
+    
+    // Evaluate based on all context (which includes recent session turns and memories)
     const context = await npcHandle.recallContext(playerId);
+    const history = memoirInstance.getSessionHistory(npcId, playerId);
+    
+    let historyBlock = "";
+    if (history.length > 0) {
+      historyBlock = `\nRecent session logs:\n${history
+        .map((h) => `Player: "${h.input}"\nNPC: "${h.reply}"`)
+        .join("\n")}\n`;
+    }
 
     const stateInfo = this.config.states[this.currentState];
     if (!stateInfo || !stateInfo.transitions || Object.keys(stateInfo.transitions).length === 0) {
@@ -489,11 +547,12 @@ export class MemoirFSM {
 You are the state transition compiler for a 2D game NPC.
 The character is currently in the state: "${this.currentState}".
 
-Based on the character's remembered context below, determine if any of these transition condition keys are currently met:
+Based on the character's remembered context and recent session history below, determine if any of these transition condition keys are currently met:
 ${transitionList.map((t) => `- ${t}`).join("\n")}
 
-Remembered context about the player:
-${context || "(No memories yet)"}
+Remembered context:
+${context || "(No long-term memories)"}
+${historyBlock}
 
 Rules:
 1. If one of the conditions has been met, output ONLY the exact transition key name (e.g. "${transitionList[0]}").
