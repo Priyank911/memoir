@@ -415,29 +415,77 @@ body {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
+    justify-content: center !important;
     grid-template-columns: none !important; /* Clear grid columns to enforce flex order */
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 24px !important;
   }
   .VPHero .main {
     order: 1 !important;
     text-align: center !important;
     width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
+  
+  /* Stack hero action buttons vertically on mobile to prevent clipping/wrapping issues */
+  .VPHero .actions {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+    gap: 12px !important;
+    margin: 0 !important;
+    padding: 24px 0 0 0 !important;
+  }
+  .VPHero .action {
+    display: block !important;
+    width: 100% !important;
+    max-width: 280px !important; /* Clean phone button width */
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .VPHero .VPButton {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+  
+  /* Position the video card relatively in the standard document flow below the stacked buttons */
   .VPHero .image {
     order: 2 !important;
-    padding-top: 40px !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    margin: 32px 0 0 0 !important; /* Visual separation gap below stacked buttons */
+    padding: 0 !important;
+    transform: none !important;
     display: flex !important;
     justify-content: center !important;
     width: 100% !important;
+    height: auto !important; /* Reset default theme fixed heights */
   }
   .VPHero .image-container {
     display: flex !important;
     justify-content: center !important;
+    align-items: center !important;
     width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
   }
   .hero-video-card {
-    width: 92% !important;
-    max-width: 500px !important;
+    width: 100% !important;
+    max-width: 480px !important;
+    height: auto !important; /* Allow layout to size naturally to 16:9 ratio */
     margin: 0 auto !important;
+  }
+  .hero-video-card .video-container {
+    height: auto !important;
+    aspect-ratio: 16 / 9 !important;
   }
 }
 
