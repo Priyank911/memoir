@@ -5,6 +5,9 @@ hero:
   name: "MEMOIR"
   text: "NPC MEMORY ENGINE"
   tagline: "Give your AI game characters persistent, long-term memory. A high-speed TypeScript SDK built directly on top of Supermemory — the ultimate AI memory and knowledge graph engine."
+  image:
+    src: /logo-black.svg
+    alt: Memoir Logo
   actions:
     - theme: brand
       text: BOOT ENGINE (GET STARTED)
